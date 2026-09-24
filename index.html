@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jungkook FC - Jokenpo Tracker</title>
+    
+    <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- TIPO DE LETRA -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
-    <!-- ESTA É A LINHA QUE RESOLVE O TEU ERRO: -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- BIBLIOTECA DE ÍCONES LUCIDE (Esta linha evita o teu erro!) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     
     <style>
         body {
             font-family: 'Inter', sans-serif;
-
             background-color: #1a0b2e;
             background-image: radial-gradient(circle at top right, #3b1464, #1a0b2e);
             color: #ffffff;
@@ -42,7 +45,6 @@
             transform: translateY(1px);
         }
 
-        /* Toast notification animation */
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -58,7 +60,6 @@
 <body class="p-4 md:p-8">
 
     <div class="max-w-5xl mx-auto">
-        
         <!-- Header -->
         <header class="text-center mb-10 mt-6 relative">
             <div class="absolute inset-0 flex justify-center items-center pointer-events-none opacity-20">
@@ -73,14 +74,13 @@
                 <i data-lucide="swords" class="w-5 h-5"></i>
             </p>
             <div id="connection-status" class="mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                Conectando ao servidor...
+                A carregar sistema...
             </div>
         </header>
 
         <!-- Main Content Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            <!-- Painel de Votação / Registro -->
+            <!-- Painel de Votação -->
             <section class="glass-panel rounded-3xl p-6 flex flex-col">
                 <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
                     <i data-lucide="plus-circle" class="text-fuchsia-400"></i>
@@ -113,7 +113,6 @@
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <script type="module">
-        // IMPORTAÇÕES CORRIGIDAS PARA VERSÃO 10.14.1 E COM O INCREMENT ADICIONADO
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -121,39 +120,33 @@
         // Participantes iniciais
         const participants = ["Kilho", "Jobriel", "Marcos", "Akyo", "Katuso", "Rodrigo"];
         
-        // Estado local
         let scores = {};
         let currentUser = null;
         let isConnected = false;
+        let db, auth, docRef;
 
-        // Firebase Refs
-        let db;
-        let auth;
-        let docRef;
-
-        // UI Elements
         const votingPanel = document.getElementById('voting-panel');
         const leaderboard = document.getElementById('leaderboard');
         const statusBadge = document.getElementById('connection-status');
         const toastContainer = document.getElementById('toast-container');
 
-        lucide.createIcons();
+        // Garante que o Lucide cria os ícones estáticos do HTML
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
 
-        // Inicializa o placar com 0
         participants.forEach(p => { scores[p] = 0; });
 
-        // Função de Toast
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
             const colors = type === 'success' ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400';
-            
             toast.className = `toast-enter flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg text-white font-medium ${colors}`;
             
             const icon = type === 'success' ? 'check-circle' : 'alert-circle';
             toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span>${message}</span>`;
             
             toastContainer.appendChild(toast);
-            lucide.createIcons();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             setTimeout(() => {
                 toast.classList.replace('toast-enter', 'toast-exit');
@@ -165,12 +158,11 @@
             try {
                 const appId = 'jungkook-jokenpo-v1';
                 
-                // ⚠️ ATENÇÃO: COLE SUAS CREDENCIAIS DO FIREBASE AQUI PARA FICAR ONLINE ⚠️
-                // Exemplo: const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "..." };
+                // DEPOIS PODES COLOCAR AQUI AS CREDENCIAIS DO FIREBASE
                 const firebaseConfig = null; 
 
                 if (!firebaseConfig) {
-                    throw new Error("Configuração do Firebase não encontrada. Operando offline.");
+                    throw new Error("Modo offline ativado (sem Firebase).");
                 }
 
                 const app = initializeApp(firebaseConfig);
@@ -180,9 +172,7 @@
                 await signInAnonymously(auth);
                 currentUser = auth.currentUser;
                 
-                if (!currentUser) {
-                    throw new Error("Falha na autenticação.");
-                }
+                if (!currentUser) throw new Error("Falha na autenticação.");
 
                 docRef = doc(db, 'artifacts', appId, 'public', 'data', 'jokenpo', 'global_scores');
 
@@ -202,7 +192,6 @@
                     }, 
                     (error) => {
                         console.error("Erro na sincronização:", error);
-                        showToast("Erro ao sincronizar dados", "error");
                     }
                 );
 
@@ -211,7 +200,7 @@
                 renderUI();
 
             } catch (error) {
-                console.error("Modo Offline ativado:", error);
+                console.log(error.message);
                 updateStatus("Modo Offline Local", "red");
                 isConnected = false;
                 renderUI(); 
@@ -228,18 +217,15 @@
         }
 
         async function addWin(participantName) {
-            // Atualiza local imediatamente
             scores[participantName] = (scores[participantName] || 0) + 1;
             renderUI();
 
             if (isConnected && currentUser && docRef) {
                 try {
-                    // USO DO INCREMENT CORRIGIDO AQUI
                     await setDoc(docRef, { [participantName]: increment(1) }, { merge: true });
                     showToast(`+1 Ponto para ${participantName}!`);
                 } catch (error) {
-                    console.error("Erro ao salvar vitória:", error);
-                    showToast("Erro ao salvar ponto na nuvem", "error");
+                    showToast("Erro ao guardar na nuvem", "error");
                     scores[participantName]--;
                     renderUI();
                 }
@@ -251,12 +237,6 @@
         window.addWin = addWin;
 
         function renderUI() {
-            renderVotingPanel();
-            renderLeaderboard();
-            lucide.createIcons(); 
-        }
-
-        function renderVotingPanel() {
             votingPanel.innerHTML = '';
             participants.forEach(p => {
                 const btn = document.createElement('button');
@@ -273,11 +253,8 @@
                 `;
                 votingPanel.appendChild(btn);
             });
-        }
 
-        function renderLeaderboard() {
             leaderboard.innerHTML = '';
-            
             const sortedParticipants = Object.keys(scores)
                 .filter(name => participants.includes(name))
                 .map(name => ({ name, score: scores[name] }))
@@ -285,13 +262,9 @@
 
             sortedParticipants.forEach((p, index) => {
                 let badgeHTML = '';
-                if (index === 0 && p.score > 0) {
-                    badgeHTML = `<i data-lucide="award" class="text-yellow-400 w-6 h-6 ml-auto"></i>`;
-                } else if (index === 1 && p.score > 0) {
-                    badgeHTML = `<i data-lucide="medal" class="text-gray-300 w-6 h-6 ml-auto"></i>`;
-                } else if (index === 2 && p.score > 0) {
-                    badgeHTML = `<i data-lucide="medal" class="text-amber-600 w-6 h-6 ml-auto"></i>`;
-                }
+                if (index === 0 && p.score > 0) badgeHTML = `<i data-lucide="award" class="text-yellow-400 w-6 h-6 ml-auto"></i>`;
+                else if (index === 1 && p.score > 0) badgeHTML = `<i data-lucide="medal" class="text-gray-300 w-6 h-6 ml-auto"></i>`;
+                else if (index === 2 && p.score > 0) badgeHTML = `<i data-lucide="medal" class="text-amber-600 w-6 h-6 ml-auto"></i>`;
 
                 const item = document.createElement('div');
                 item.className = 'flex items-center gap-4 bg-purple-900/40 p-4 rounded-xl border border-purple-500/20 hover:bg-purple-800/40 transition-colors';
@@ -302,24 +275,18 @@
                 if(index === 2) posColor = 'text-amber-600 font-bold';
 
                 item.innerHTML = `
-                    <div class="w-8 text-center ${posColor}">
-                        #${index + 1}
-                    </div>
-                    <div class="flex-grow font-semibold text-lg">
-                        ${p.name}
-                    </div>
-                    <div class="text-2xl font-black text-fuchsia-300 bg-black/40 px-3 py-1 rounded-lg min-w-[3rem] text-center">
-                        ${p.score}
-                    </div>
+                    <div class="w-8 text-center ${posColor}">#${index + 1}</div>
+                    <div class="flex-grow font-semibold text-lg">${p.name}</div>
+                    <div class="text-2xl font-black text-fuchsia-300 bg-black/40 px-3 py-1 rounded-lg min-w-[3rem] text-center">${p.score}</div>
                     ${badgeHTML}
                 `;
                 leaderboard.appendChild(item);
             });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // GATILHO CORRIGIDO
         initApp();
-
     </script>
 </body>
 </html>
