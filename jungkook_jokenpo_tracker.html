@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jungkook FC - Jokenpo Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.260.0/umd/lucide.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a0b2e;
+            background-image: radial-gradient(circle at top right, #3b1464, #1a0b2e);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(126, 34, 206, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .btn-purple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.5);
+        }
+
+        .btn-purple:active {
+            transform: translateY(1px);
+        }
+
+        /* Toast notification animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .toast-enter { animation: slideIn 0.3s forwards; }
+        .toast-exit { animation: fadeOut 0.5s forwards; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        
+        <!-- Header -->
+        <header class="text-center mb-10 mt-6 relative">
+            <div class="absolute inset-0 flex justify-center items-center pointer-events-none opacity-20">
+                <i data-lucide="crown" class="w-32 h-32 text-purple-400"></i>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-fuchsia-400 relative z-10">
+                Jungkook FC
+            </h1>
+            <p class="text-purple-200 text-lg relative z-10 flex items-center justify-center gap-2">
+                <i data-lucide="swords" class="w-5 h-5"></i> 
+                Torneio Oficial de Jokenpo 
+                <i data-lucide="swords" class="w-5 h-5"></i>
+            </p>
+            <div id="connection-status" class="mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                Conectando ao servidor...
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Painel de Votação / Registro -->
+            <section class="glass-panel rounded-3xl p-6 flex flex-col">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
+                    <i data-lucide="plus-circle" class="text-fuchsia-400"></i>
+                    Registrar Vitória
+                </h2>
+                <div id="voting-panel" class="grid grid-cols-2 gap-4 flex-grow">
+                    <!-- Botões serão injetados via JS -->
+                </div>
+            </section>
+
+            <!-- Placar de Líderes -->
+            <section class="glass-panel rounded-3xl p-6 flex flex-col">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
+                    <i data-lucide="trophy" class="text-yellow-400"></i>
+                    Ranking Geral
+                </h2>
+                <div id="leaderboard" class="flex flex-col gap-3 flex-grow">
+                    <!-- Ranking será injetado via JS -->
+                    <div class="animate-pulse flex flex-col gap-3">
+                        <div class="h-16 bg-purple-900/40 rounded-xl"></div>
+                        <div class="h-16 bg-purple-900/40 rounded-xl"></div>
+                        <div class="h-16 bg-purple-900/40 rounded-xl"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Container for toast notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Participantes iniciais
+        const participants = ["Kilho", "Jobriel", "Marcos", "Akyo", "Katuso", "Rodrigo"];
+        
+        // Estado local
+        let scores = {};
+        let currentUser = null;
+        let isConnected = false;
+
+        // Firebase Refs
+        let db;
+        let auth;
+        let docRef;
+
+        // UI Elements
+        const votingPanel = document.getElementById('voting-panel');
+        const leaderboard = document.getElementById('leaderboard');
+        const statusBadge = document.getElementById('connection-status');
+        const toastContainer = document.getElementById('toast-container');
+
+        lucide.createIcons();
+
+        // Inicializa o placar com 0
+        participants.forEach(p => { scores[p] = 0; });
+
+        // Função de Toast (sem usar alert)
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400';
+            
+            toast.className = `toast-enter flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg text-white font-medium ${colors}`;
+            
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span>${message}</span>`;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        async function initApp() {
+            try {
+                // Pega configs do ambiente injetado
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'jungkook-jokenpo-v1';
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (!firebaseConfig) {
+                    throw new Error("Configuração do Firebase não encontrada. Operando offline.");
+                }
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Regra de segurança: Autenticar primeiro
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                currentUser = auth.currentUser;
+                
+                if (!currentUser) {
+                    throw new Error("Falha na autenticação.");
+                }
+
+                // Definir referência rígida (RULE 1)
+                docRef = doc(db, 'artifacts', appId, 'public', 'data', 'jokenpo', 'global_scores');
+
+                // Tenta criar o documento se não existir
+                const docSnap = await getDoc(docRef);
+                if (!docSnap.exists()) {
+                    await setDoc(docRef, scores);
+                } else {
+                    scores = { ...scores, ...docSnap.data() };
+                }
+
+                // Começar a ouvir as mudanças em tempo real
+                onSnapshot(docRef, 
+                    (snapshot) => {
+                        if (snapshot.exists()) {
+                            scores = { ...scores, ...snapshot.data() };
+                            renderUI();
+                        }
+                    }, 
+                    (error) => {
+                        console.error("Erro na sincronização:", error);
+                        showToast("Erro ao sincronizar dados", "error");
+                    }
+                );
+
+                isConnected = true;
+                updateStatus("Online - Sincronizado", "green");
+                renderUI();
+
+            } catch (error) {
+                console.error("Modo Offline ativado:", error);
+                updateStatus("Modo Offline Local", "red");
+                isConnected = false;
+                renderUI(); // Renderiza estado local fallback
+            }
+        }
+
+        function updateStatus(text, color) {
+            statusBadge.textContent = text;
+            statusBadge.className = `mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold border ${
+                color === 'green' 
+                ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                : 'bg-red-500/20 text-red-300 border-red-500/30'
+            }`;
+        }
+
+        async function addWin(participantName) {
+            // Atualiza local imediatamente para sensação de resposta rápida
+            scores[participantName] = (scores[participantName] || 0) + 1;
+            renderUI();
+
+            if (isConnected && currentUser && docRef) {
+                try {
+                    await setDoc(docRef, { [participantName]: scores[participantName] }, { merge: true });
+                    showToast(`+1 Ponto para ${participantName}!`);
+                } catch (error) {
+                    console.error("Erro ao salvar vitória:", error);
+                    showToast("Erro ao salvar ponto na nuvem", "error");
+                    // Reverte se falhar
+                    scores[participantName]--;
+                    renderUI();
+                }
+            } else {
+                showToast(`(Offline) +1 para ${participantName}`);
+            }
+        }
+
+        // Expoe função pro escopo global para o onclick funcionar
+        window.addWin = addWin;
+
+        function renderUI() {
+            renderVotingPanel();
+            renderLeaderboard();
+            lucide.createIcons(); // Recria icones injetados dinamicamente
+        }
+
+        function renderVotingPanel() {
+            votingPanel.innerHTML = '';
+            participants.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-purple rounded-2xl p-4 flex flex-col items-center justify-center gap-2 group';
+                btn.onclick = () => window.addWin(p);
+                btn.innerHTML = `
+                    <div class="bg-white/20 p-3 rounded-full group-hover:scale-110 transition-transform">
+                        <i data-lucide="hand-metal" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg">${p}</span>
+                    <span class="text-xs bg-black/30 px-2 py-1 rounded-full text-purple-200 uppercase tracking-wide">
+                        Adicionar
+                    </span>
+                `;
+                votingPanel.appendChild(btn);
+            });
+        }
+
+        function renderLeaderboard() {
+            leaderboard.innerHTML = '';
+            
+            // Transforma o objeto em array, filtra participantes oficiais e ordena decrescente
+            const sortedParticipants = Object.keys(scores)
+                .filter(name => participants.includes(name))
+                .map(name => ({ name, score: scores[name] }))
+                .sort((a, b) => b.score - a.score);
+
+            sortedParticipants.forEach((p, index) => {
+                let badgeHTML = '';
+                if (index === 0 && p.score > 0) {
+                    badgeHTML = `<i data-lucide="award" class="text-yellow-400 w-6 h-6 ml-auto"></i>`;
+                } else if (index === 1 && p.score > 0) {
+                    badgeHTML = `<i data-lucide="medal" class="text-gray-300 w-6 h-6 ml-auto"></i>`;
+                } else if (index === 2 && p.score > 0) {
+                    badgeHTML = `<i data-lucide="medal" class="text-amber-600 w-6 h-6 ml-auto"></i>`;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-4 bg-purple-900/40 p-4 rounded-xl border border-purple-500/20 hover:bg-purple-800/40 transition-colors';
+                
+                // Determina cor da posição
+                let posColor = 'text-purple-300';
+                if(index === 0) posColor = 'text-yellow-400 font-bold text-xl';
+                if(index === 1) posColor = 'text-gray-300 font-bold';
+                if(index === 2) posColor = 'text-amber-600 font-bold';
+
+                item.innerHTML = `
+                    <div class="w-8 text-center ${posColor}">
+                        #${index + 1}
+                    </div>
+                    <div class="flex-grow font-semibold text-lg">
+                        ${p.name}
+                    </div>
+                    <div class="text-2xl font-black text-fuchsia-300 bg-black/40 px-3 py-1 rounded-lg min-w-[3rem] text-center">
+                        ${p.score}
+                    </div>
+                    ${badgeHTML}
+                `;
+                leaderboard.appendChild(item);
+            });
+        }
+
+        // Iniciar app assim que a tela carregar
+        window.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
