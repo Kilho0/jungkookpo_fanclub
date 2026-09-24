@@ -109,9 +109,10 @@
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // IMPORTAÇÕES CORRIGIDAS PARA VERSÃO 10.14.1 E COM O INCREMENT ADICIONADO
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
         // Participantes iniciais
         const participants = ["Kilho", "Jobriel", "Marcos", "Akyo", "Katuso", "Rodrigo"];
@@ -137,7 +138,7 @@
         // Inicializa o placar com 0
         participants.forEach(p => { scores[p] = 0; });
 
-        // Função de Toast (sem usar alert)
+        // Função de Toast
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
             const colors = type === 'success' ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400';
@@ -158,10 +159,11 @@
 
         async function initApp() {
             try {
-                // Pega configs do ambiente injetado
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'jungkook-jokenpo-v1';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                const appId = 'jungkook-jokenpo-v1';
+                
+                // ⚠️ ATENÇÃO: COLE SUAS CREDENCIAIS DO FIREBASE AQUI PARA FICAR ONLINE ⚠️
+                // Exemplo: const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "..." };
+                const firebaseConfig = null; 
 
                 if (!firebaseConfig) {
                     throw new Error("Configuração do Firebase não encontrada. Operando offline.");
@@ -171,23 +173,15 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Regra de segurança: Autenticar primeiro
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
+                await signInAnonymously(auth);
                 currentUser = auth.currentUser;
                 
                 if (!currentUser) {
                     throw new Error("Falha na autenticação.");
                 }
 
-                // Definir referência rígida (RULE 1)
                 docRef = doc(db, 'artifacts', appId, 'public', 'data', 'jokenpo', 'global_scores');
 
-                // Tenta criar o documento se não existir
                 const docSnap = await getDoc(docRef);
                 if (!docSnap.exists()) {
                     await setDoc(docRef, scores);
@@ -195,7 +189,6 @@
                     scores = { ...scores, ...docSnap.data() };
                 }
 
-                // Começar a ouvir as mudanças em tempo real
                 onSnapshot(docRef, 
                     (snapshot) => {
                         if (snapshot.exists()) {
@@ -217,7 +210,7 @@
                 console.error("Modo Offline ativado:", error);
                 updateStatus("Modo Offline Local", "red");
                 isConnected = false;
-                renderUI(); // Renderiza estado local fallback
+                renderUI(); 
             }
         }
 
@@ -231,18 +224,18 @@
         }
 
         async function addWin(participantName) {
-            // Atualiza local imediatamente para sensação de resposta rápida
+            // Atualiza local imediatamente
             scores[participantName] = (scores[participantName] || 0) + 1;
             renderUI();
 
             if (isConnected && currentUser && docRef) {
                 try {
-                    await setDoc(docRef, { [participantName]: scores[participantName] }, { merge: true });
+                    // USO DO INCREMENT CORRIGIDO AQUI
+                    await setDoc(docRef, { [participantName]: increment(1) }, { merge: true });
                     showToast(`+1 Ponto para ${participantName}!`);
                 } catch (error) {
                     console.error("Erro ao salvar vitória:", error);
                     showToast("Erro ao salvar ponto na nuvem", "error");
-                    // Reverte se falhar
                     scores[participantName]--;
                     renderUI();
                 }
@@ -251,13 +244,12 @@
             }
         }
 
-        // Expoe função pro escopo global para o onclick funcionar
         window.addWin = addWin;
 
         function renderUI() {
             renderVotingPanel();
             renderLeaderboard();
-            lucide.createIcons(); // Recria icones injetados dinamicamente
+            lucide.createIcons(); 
         }
 
         function renderVotingPanel() {
@@ -282,7 +274,6 @@
         function renderLeaderboard() {
             leaderboard.innerHTML = '';
             
-            // Transforma o objeto em array, filtra participantes oficiais e ordena decrescente
             const sortedParticipants = Object.keys(scores)
                 .filter(name => participants.includes(name))
                 .map(name => ({ name, score: scores[name] }))
@@ -301,7 +292,6 @@
                 const item = document.createElement('div');
                 item.className = 'flex items-center gap-4 bg-purple-900/40 p-4 rounded-xl border border-purple-500/20 hover:bg-purple-800/40 transition-colors';
                 
-                // Determina cor da posição
                 let posColor = 'text-purple-300';
                 if(index === 0) posColor = 'text-yellow-400 font-bold text-xl';
                 if(index === 1) posColor = 'text-gray-300 font-bold';
@@ -323,8 +313,8 @@
             });
         }
 
-        // Iniciar app assim que a tela carregar
-        window.addEventListener('DOMContentLoaded', initApp);
+        // GATILHO CORRIGIDO
+        initApp();
 
     </script>
 </body>
