@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Jungkook FC - Tracker de Jokenpo</title>
     
-    <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- TIPO DE LETRA -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    
-    <!-- BIBLIOTECA DE ÍCONES LUCIDE -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     
     <style>
@@ -70,7 +65,7 @@
                 Torneio Oficial de Jokenpo 
                 <i data-lucide="swords" class="w-4 h-4 md:w-5 md:h-5"></i>
             </p>
-            <div id="connection-status" class="mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+            <div id="connection-status" class="mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 transition-colors">
                 Carregando sistema...
             </div>
         </header>
@@ -86,7 +81,6 @@
                 </h2>
                 
                 <div class="flex flex-col gap-5">
-                    <!-- Escolher Vencedor -->
                     <div>
                         <label class="block text-xs md:text-sm font-semibold text-green-400 mb-2 uppercase tracking-wider">Vencedor</label>
                         <select id="winner-select" class="w-full bg-purple-900/50 border border-purple-500/30 text-white rounded-xl p-3 md:p-4 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-semibold cursor-pointer">
@@ -94,14 +88,12 @@
                         </select>
                     </div>
 
-                    <!-- Divisor Visual -->
                     <div class="flex items-center justify-center gap-4">
                         <div class="h-px bg-purple-500/30 flex-grow"></div>
                         <span class="text-[10px] md:text-xs font-black text-purple-300 uppercase tracking-widest bg-purple-900/50 px-3 py-1 rounded-full">VS</span>
                         <div class="h-px bg-purple-500/30 flex-grow"></div>
                     </div>
 
-                    <!-- Escolher Derrotado -->
                     <div>
                         <label class="block text-xs md:text-sm font-semibold text-red-400 mb-2 uppercase tracking-wider">Derrotado</label>
                         <select id="loser-select" class="w-full bg-purple-900/50 border border-purple-500/30 text-white rounded-xl p-3 md:p-4 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-semibold cursor-pointer">
@@ -109,7 +101,7 @@
                         </select>
                     </div>
 
-                    <button onclick="window.submitMatch()" class="btn-purple mt-4 w-full rounded-xl p-4 font-bold text-base md:text-lg flex items-center justify-center gap-2 shadow-lg">
+                    <button type="button" onclick="window.submitMatch()" class="btn-purple mt-4 w-full rounded-xl p-4 font-bold text-base md:text-lg flex items-center justify-center gap-2 shadow-lg">
                         <i data-lucide="check-circle" class="w-5 h-5 md:w-6 md:h-6"></i>
                         Confirmar Resultado
                     </button>
@@ -123,7 +115,6 @@
                     Ranking Geral
                 </h2>
                 <div id="leaderboard" class="flex flex-col gap-3">
-                    <!-- Loading placeholder -->
                     <div class="animate-pulse flex flex-col gap-3">
                         <div class="h-14 md:h-16 bg-purple-900/40 rounded-xl"></div>
                         <div class="h-14 md:h-16 bg-purple-900/40 rounded-xl"></div>
@@ -153,7 +144,6 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-        // Fotos (basta subir na mesma pasta no GitHub)
         const fotos = {
             "Kilho": "kilho.jpg",
             "Jobriel": "jobriel.jpg",
@@ -165,11 +155,7 @@
         
         const participants = Object.keys(fotos);
         
-        let appData = {
-            stats: {},
-            history: []
-        };
-
+        let appData = { stats: {}, history: [] };
         participants.forEach(p => { appData.stats[p] = { w: 0, l: 0 }; });
 
         let currentUser = null;
@@ -203,7 +189,7 @@
             setTimeout(() => {
                 toast.classList.replace('toast-enter', 'toast-exit');
                 setTimeout(() => toast.remove(), 500);
-            }, 3000);
+            }, 4000);
         }
 
         async function initApp() {
@@ -245,6 +231,9 @@
                             appData = snapshot.data();
                             renderUI();
                         }
+                    },
+                    (error) => {
+                        throw error; // Manda o erro para o CATCH lá em baixo!
                     }
                 );
 
@@ -253,8 +242,21 @@
                 renderUI();
 
             } catch (error) {
-                updateStatus("Erro de Conexão", "red");
+                console.error("ERRO DO FIREBASE:", error);
                 isConnected = false;
+                
+                // SISTEMA DE DETECÇÃO DE ERROS PARA TE AJUDAR
+                let erroMsg = error.message;
+                if (erroMsg.includes("permission") || erroMsg.includes("Missing or insufficient permissions")) {
+                    erroMsg = "Erro: Firebase não está em 'Modo de Teste'! Os dados não podem ser salvos.";
+                } else if (erroMsg.includes("auth/operation-not-allowed")) {
+                    erroMsg = "Erro: Login 'Anônimo' não foi ativado no Firebase!";
+                } else if (erroMsg.includes("network")) {
+                    erroMsg = "Sem internet ou bloqueado por AdBlocker.";
+                }
+
+                updateStatus("Offline (Erro)", "red");
+                showToast(erroMsg, "error");
                 renderUI(); 
             }
         }
@@ -303,46 +305,45 @@
                     showToast("Erro ao salvar na nuvem", "error");
                 }
             } else {
-                showToast(`(Offline) Partida registrada!`);
+                showToast(`(Offline) Partida salva só no seu celular!`);
             }
         }
         window.submitMatch = submitMatch;
 
-        // NOVA FUNÇÃO: Deletar Partida
-        async function deleteMatch(matchId) {
-            if (!confirm("Tem certeza que deseja apagar este duelo? Os pontos serão corrigidos no ranking.")) return;
+        // FUNÇÃO DO "X" REFEITA E APRIMORADA
+        window.deleteMatch = async function(matchIdStr) {
+            if (!confirm("Tem certeza que deseja apagar este duelo?")) return;
 
-            // Encontra a partida no array pelo ID único
-            const matchIndex = appData.history.findIndex(m => m.id === matchId);
-            if (matchIndex === -1) return;
+            // Transforma o ID para número (corrige o bug do botão não clicar)
+            const idNumber = Number(matchIdStr);
+            const matchIndex = appData.history.findIndex(m => m.id === idNumber);
+            
+            if (matchIndex === -1) {
+                showToast("Erro: Partida não encontrada", "error");
+                return;
+            }
 
             const match = appData.history[matchIndex];
 
-            // Reverte os pontos apenas se forem maiores que zero (segurança)
-            if (appData.stats[match.winner] && appData.stats[match.winner].w > 0) {
-                appData.stats[match.winner].w -= 1;
-            }
-            if (appData.stats[match.loser] && appData.stats[match.loser].l > 0) {
-                appData.stats[match.loser].l -= 1;
-            }
+            // Reverte os pontos
+            if (appData.stats[match.winner] && appData.stats[match.winner].w > 0) appData.stats[match.winner].w -= 1;
+            if (appData.stats[match.loser] && appData.stats[match.loser].l > 0) appData.stats[match.loser].l -= 1;
 
             // Remove do histórico
             appData.history.splice(matchIndex, 1);
-            
             renderUI();
 
             if (isConnected && currentUser && docRef) {
                 try {
                     await setDoc(docRef, appData);
-                    showToast("Partida cancelada e ranking atualizado!");
+                    showToast("Partida apagada!");
                 } catch (error) {
                     showToast("Erro ao remover na nuvem", "error");
                 }
             } else {
-                showToast("(Offline) Partida cancelada!");
+                showToast("(Offline) Partida apagada!");
             }
         }
-        window.deleteMatch = deleteMatch;
 
         function renderUI() {
             // RANKING
@@ -390,7 +391,7 @@
                 leaderboard.appendChild(item);
             });
 
-            // HISTÓRICO COM BOTÃO DE DELETAR
+            // HISTÓRICO COM BOTÃO DE DELETAR (Agora funcional)
             historyPanel.innerHTML = '';
             if (appData.history.length === 0) {
                 historyPanel.innerHTML = '<div class="text-center text-purple-300/60 py-4 italic text-sm">Nenhuma partida registrada.</div>';
@@ -398,6 +399,8 @@
                 appData.history.forEach(match => {
                     const hItem = document.createElement('div');
                     hItem.className = 'flex items-center justify-between bg-purple-900/30 p-2 md:p-3 rounded-lg border border-purple-500/10 text-xs md:text-sm group hover:bg-purple-800/40 transition-colors';
+                    
+                    // Nota: O ID agora vai entre aspas simples ('${match.id}') para garantir que o Javascript não se perca com números grandes
                     hItem.innerHTML = `
                         <div class="flex items-center gap-2 md:gap-3 flex-wrap flex-grow">
                             <span class="text-purple-300 font-mono text-[10px] md:text-xs bg-black/40 px-2 py-1 rounded-md whitespace-nowrap">${match.time}</span>
@@ -407,8 +410,7 @@
                                 <strong class="text-red-400">${match.loser}</strong>
                             </span>
                         </div>
-                        <!-- Botão de Apagar -->
-                        <button onclick="window.deleteMatch(${match.id})" class="text-purple-400 hover:text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-all flex-shrink-0 ml-2 md:opacity-50 md:group-hover:opacity-100" title="Apagar partida">
+                        <button type="button" onclick="window.deleteMatch('${match.id}')" class="text-purple-400 hover:text-red-400 hover:bg-red-500/20 p-2 rounded-lg transition-all flex-shrink-0 ml-2 md:opacity-50 md:group-hover:opacity-100 cursor-pointer pointer-events-auto" title="Apagar partida">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     `;
