@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jungkook FC - Jokenpo Tracker</title>
+    <title>Jungkook FC - Tracker de Jokenpo</title>
     
     <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,7 @@
     <!-- TIPO DE LETRA -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
-    <!-- BIBLIOTECA DE ÍCONES LUCIDE (Esta linha evita o teu erro!) -->
+    <!-- BIBLIOTECA DE ÍCONES LUCIDE -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     
     <style>
@@ -45,14 +45,16 @@
             transform: translateY(1px);
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
         }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .toast-enter { animation: slideIn 0.3s forwards; }
         .toast-exit { animation: fadeOut 0.5s forwards; }
     </style>
@@ -79,26 +81,54 @@
         </header>
 
         <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Painel de Votação -->
-            <section class="glass-panel rounded-3xl p-6 flex flex-col">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            
+            <!-- Painel de Registo de Duelos -->
+            <section class="glass-panel rounded-3xl p-6 flex flex-col h-fit">
                 <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
-                    <i data-lucide="plus-circle" class="text-fuchsia-400"></i>
-                    Registrar Vitória
+                    <i data-lucide="swords" class="text-fuchsia-400"></i>
+                    Registrar Duelo
                 </h2>
-                <div id="voting-panel" class="grid grid-cols-2 gap-4 flex-grow">
-                    <!-- Botões serão injetados via JS -->
+                
+                <div class="flex flex-col gap-6">
+                    <!-- Escolher Vencedor -->
+                    <div>
+                        <label class="block text-sm font-semibold text-green-400 mb-2 uppercase tracking-wider">Vencedor</label>
+                        <select id="winner-select" class="w-full bg-purple-900/50 border border-purple-500/30 text-white rounded-xl p-4 text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-semibold">
+                            <option value="">Selecione o vencedor...</option>
+                        </select>
+                    </div>
+
+                    <!-- Divisor Visual -->
+                    <div class="flex items-center justify-center gap-4">
+                        <div class="h-px bg-purple-500/30 flex-grow"></div>
+                        <span class="text-xs font-black text-purple-300 uppercase tracking-widest bg-purple-900/50 px-3 py-1 rounded-full">VS</span>
+                        <div class="h-px bg-purple-500/30 flex-grow"></div>
+                    </div>
+
+                    <!-- Escolher Derrotado -->
+                    <div>
+                        <label class="block text-sm font-semibold text-red-400 mb-2 uppercase tracking-wider">Derrotado</label>
+                        <select id="loser-select" class="w-full bg-purple-900/50 border border-purple-500/30 text-white rounded-xl p-4 text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-500 font-semibold">
+                            <option value="">Selecione o perdedor...</option>
+                        </select>
+                    </div>
+
+                    <button onclick="window.submitMatch()" class="btn-purple mt-2 w-full rounded-xl p-4 font-bold text-lg flex items-center justify-center gap-2 shadow-lg">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i>
+                        Confirmar Resultado
+                    </button>
                 </div>
             </section>
 
-            <!-- Placar de Líderes -->
-            <section class="glass-panel rounded-3xl p-6 flex flex-col">
+            <!-- Placar de Líderes Detalhado -->
+            <section class="glass-panel rounded-3xl p-6 flex flex-col h-fit">
                 <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
                     <i data-lucide="trophy" class="text-yellow-400"></i>
                     Ranking Geral
                 </h2>
-                <div id="leaderboard" class="flex flex-col gap-3 flex-grow">
-                    <!-- Ranking será injetado via JS -->
+                <div id="leaderboard" class="flex flex-col gap-3">
+                    <!-- Loading placeholder -->
                     <div class="animate-pulse flex flex-col gap-3">
                         <div class="h-16 bg-purple-900/40 rounded-xl"></div>
                         <div class="h-16 bg-purple-900/40 rounded-xl"></div>
@@ -107,47 +137,76 @@
                 </div>
             </section>
         </div>
+
+        <!-- Histórico de Partidas (Linha do Tempo) -->
+        <section class="glass-panel rounded-3xl p-6">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2 border-b border-purple-500/30 pb-3">
+                <i data-lucide="clock" class="text-blue-400"></i>
+                Histórico de Partidas
+            </h2>
+            <div id="history-panel" class="flex flex-col gap-2 max-h-80 overflow-y-auto pr-2">
+                <!-- Histórico será injetado aqui -->
+            </div>
+        </section>
     </div>
 
-    <!-- Container for toast notifications -->
+    <!-- Container para notificações (Toasts) -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-        // Participantes iniciais
-        const participants = ["Kilho", "Jobriel", "Marcos", "Akyo", "Katuso", "Rodrigo"];
+        const fotos = {
+            "Kilho": "kilho.jpg",
+            "Jobriel": "jobriel.jpg",
+            "Marcos": "marcos.jpg",
+            "Akyo": "akyo.jpg",
+            "Katuso": "katuso.jpg",
+            "Rodrigo": "rodrigo.jpg"
+        };
         
-        let scores = {};
+        const participants = Object.keys(fotos);
+        
+        // Agora guardamos vitórias (w), derrotas (l) e o histórico
+        let appData = {
+            stats: {},
+            history: [] // [{ id, winner, loser, time }]
+        };
+
+        // Inicializar stats
+        participants.forEach(p => { appData.stats[p] = { w: 0, l: 0 }; });
+
         let currentUser = null;
         let isConnected = false;
         let db, auth, docRef;
 
-        const votingPanel = document.getElementById('voting-panel');
+        const winnerSelect = document.getElementById('winner-select');
+        const loserSelect = document.getElementById('loser-select');
         const leaderboard = document.getElementById('leaderboard');
+        const historyPanel = document.getElementById('history-panel');
         const statusBadge = document.getElementById('connection-status');
         const toastContainer = document.getElementById('toast-container');
 
-        // Garante que o Lucide cria os ícones estáticos do HTML
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
 
-        participants.forEach(p => { scores[p] = 0; });
+        // Popular os Selects com os nomes
+        function populateSelects() {
+            participants.forEach(p => {
+                winnerSelect.add(new Option(p, p));
+                loserSelect.add(new Option(p, p));
+            });
+        }
+        populateSelects();
 
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
             const colors = type === 'success' ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400';
             toast.className = `toast-enter flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg text-white font-medium ${colors}`;
-            
-            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span>${message}</span>`;
-            
+            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-5 h-5"></i> <span>${message}</span>`;
             toastContainer.appendChild(toast);
             if (typeof lucide !== 'undefined') lucide.createIcons();
-
             setTimeout(() => {
                 toast.classList.replace('toast-enter', 'toast-exit');
                 setTimeout(() => toast.remove(), 500);
@@ -156,13 +215,13 @@
 
         async function initApp() {
             try {
-                const appId = 'jungkook-jokenpo-v1';
+                const appId = 'jungkook-jokenpo-v2'; // Mudei a versão por causa da estrutura nova
                 
-                // DEPOIS PODES COLOCAR AQUI AS CREDENCIAIS DO FIREBASE
+                // MODO OFFLINE ATIVADO - Substitui o 'null' pelas credenciais do Firebase depois
                 const firebaseConfig = null; 
 
                 if (!firebaseConfig) {
-                    throw new Error("Modo offline ativado (sem Firebase).");
+                    throw new Error("Modo offline ativado.");
                 }
 
                 const app = initializeApp(firebaseConfig);
@@ -174,24 +233,23 @@
                 
                 if (!currentUser) throw new Error("Falha na autenticação.");
 
-                docRef = doc(db, 'artifacts', appId, 'public', 'data', 'jokenpo', 'global_scores');
+                docRef = doc(db, 'artifacts', appId, 'public', 'data', 'jokenpo', 'global_data');
 
                 const docSnap = await getDoc(docRef);
                 if (!docSnap.exists()) {
-                    await setDoc(docRef, scores);
+                    await setDoc(docRef, appData);
                 } else {
-                    scores = { ...scores, ...docSnap.data() };
+                    appData = docSnap.data();
+                    // Garante que novos participantes tenham stats se forem adicionados depois
+                    participants.forEach(p => { if(!appData.stats[p]) appData.stats[p] = {w:0, l:0}; });
                 }
 
                 onSnapshot(docRef, 
                     (snapshot) => {
                         if (snapshot.exists()) {
-                            scores = { ...scores, ...snapshot.data() };
+                            appData = snapshot.data();
                             renderUI();
                         }
-                    }, 
-                    (error) => {
-                        console.error("Erro na sincronização:", error);
                     }
                 );
 
@@ -200,7 +258,6 @@
                 renderUI();
 
             } catch (error) {
-                console.log(error.message);
                 updateStatus("Modo Offline Local", "red");
                 isConnected = false;
                 renderUI(); 
@@ -210,64 +267,80 @@
         function updateStatus(text, color) {
             statusBadge.textContent = text;
             statusBadge.className = `mt-4 inline-block px-3 py-1 rounded-full text-xs font-semibold border ${
-                color === 'green' 
-                ? 'bg-green-500/20 text-green-300 border-green-500/30'
-                : 'bg-red-500/20 text-red-300 border-red-500/30'
+                color === 'green' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'
             }`;
         }
 
-        async function addWin(participantName) {
-            scores[participantName] = (scores[participantName] || 0) + 1;
+        async function submitMatch() {
+            const winner = winnerSelect.value;
+            const loser = loserSelect.value;
+
+            if (!winner || !loser) {
+                showToast("Escolhe o vencedor e o derrotado!", "error");
+                return;
+            }
+            if (winner === loser) {
+                showToast("Um jogador não pode jogar contra si mesmo!", "error");
+                return;
+            }
+
+            // Atualiza estatísticas locais
+            appData.stats[winner].w += 1;
+            appData.stats[loser].l += 1;
+
+            // Formata a hora (ex: 14:30)
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            // Adiciona ao histórico (no topo)
+            const matchRecord = { id: Date.now(), winner, loser, time: timeString };
+            appData.history.unshift(matchRecord);
+            
+            // Mantém apenas as últimas 50 partidas para não pesar
+            if (appData.history.length > 50) appData.history.pop();
+
+            // Limpa os selects
+            winnerSelect.value = "";
+            loserSelect.value = "";
+
             renderUI();
 
             if (isConnected && currentUser && docRef) {
                 try {
-                    await setDoc(docRef, { [participantName]: increment(1) }, { merge: true });
-                    showToast(`+1 Ponto para ${participantName}!`);
+                    // Guarda o objeto inteiro na nuvem
+                    await setDoc(docRef, appData);
+                    showToast(`Vitória de ${winner} registada!`);
                 } catch (error) {
                     showToast("Erro ao guardar na nuvem", "error");
-                    scores[participantName]--;
-                    renderUI();
                 }
             } else {
-                showToast(`(Offline) +1 para ${participantName}`);
+                showToast(`(Offline) Partida registada!`);
             }
         }
 
-        window.addWin = addWin;
+        window.submitMatch = submitMatch;
 
         function renderUI() {
-            votingPanel.innerHTML = '';
-            participants.forEach(p => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-purple rounded-2xl p-4 flex flex-col items-center justify-center gap-2 group';
-                btn.onclick = () => window.addWin(p);
-                btn.innerHTML = `
-                    <div class="bg-white/20 p-3 rounded-full group-hover:scale-110 transition-transform">
-                        <i data-lucide="hand-metal" class="w-6 h-6 text-white"></i>
-                    </div>
-                    <span class="font-bold text-lg">${p}</span>
-                    <span class="text-xs bg-black/30 px-2 py-1 rounded-full text-purple-200 uppercase tracking-wide">
-                        Adicionar
-                    </span>
-                `;
-                votingPanel.appendChild(btn);
-            });
-
+            // 1. DESENHAR O RANKING
             leaderboard.innerHTML = '';
-            const sortedParticipants = Object.keys(scores)
+            
+            // Ordena primeiro por Vitórias, e se empatar, por menos Derrotas
+            const sortedParticipants = Object.keys(appData.stats)
                 .filter(name => participants.includes(name))
-                .map(name => ({ name, score: scores[name] }))
-                .sort((a, b) => b.score - a.score);
+                .map(name => ({ name, w: appData.stats[name].w, l: appData.stats[name].l }))
+                .sort((a, b) => {
+                    if (b.w !== a.w) return b.w - a.w;
+                    return a.l - b.l;
+                });
 
             sortedParticipants.forEach((p, index) => {
                 let badgeHTML = '';
-                if (index === 0 && p.score > 0) badgeHTML = `<i data-lucide="award" class="text-yellow-400 w-6 h-6 ml-auto"></i>`;
-                else if (index === 1 && p.score > 0) badgeHTML = `<i data-lucide="medal" class="text-gray-300 w-6 h-6 ml-auto"></i>`;
-                else if (index === 2 && p.score > 0) badgeHTML = `<i data-lucide="medal" class="text-amber-600 w-6 h-6 ml-auto"></i>`;
+                if (index === 0 && p.w > 0) badgeHTML = `<i data-lucide="award" class="text-yellow-400 w-6 h-6 ml-auto"></i>`;
+                else if (index === 1 && p.w > 0) badgeHTML = `<i data-lucide="medal" class="text-gray-300 w-6 h-6 ml-auto"></i>`;
+                else if (index === 2 && p.w > 0) badgeHTML = `<i data-lucide="medal" class="text-amber-600 w-6 h-6 ml-auto"></i>`;
 
                 const item = document.createElement('div');
-                item.className = 'flex items-center gap-4 bg-purple-900/40 p-4 rounded-xl border border-purple-500/20 hover:bg-purple-800/40 transition-colors';
+                item.className = 'flex items-center gap-3 bg-purple-900/40 p-3 rounded-xl border border-purple-500/20 hover:bg-purple-800/40 transition-colors';
                 
                 let posColor = 'text-purple-300';
                 if(index === 0) posColor = 'text-yellow-400 font-bold text-xl';
@@ -276,12 +349,47 @@
 
                 item.innerHTML = `
                     <div class="w-8 text-center ${posColor}">#${index + 1}</div>
-                    <div class="flex-grow font-semibold text-lg">${p.name}</div>
-                    <div class="text-2xl font-black text-fuchsia-300 bg-black/40 px-3 py-1 rounded-lg min-w-[3rem] text-center">${p.score}</div>
+                    <div class="w-12 h-12 rounded-full overflow-hidden border border-purple-400/50 flex-shrink-0 bg-white/10 flex items-center justify-center">
+                        <img src="${fotos[p.name]}" alt="${p.name}" class="w-full h-full object-cover" onerror="this.outerHTML='<span class=\\'text-lg font-bold text-white/50\\'>${p.name.charAt(0)}</span>'">
+                    </div>
+                    <div class="flex-grow font-semibold text-lg ml-2">${p.name}</div>
+                    
+                    <!-- Bloco de Vitórias e Derrotas -->
+                    <div class="flex gap-2 text-sm font-black text-center mr-2">
+                        <div class="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg border border-green-500/30">
+                            ${p.w} <span class="text-xs opacity-70">V</span>
+                        </div>
+                        <div class="bg-red-500/20 text-red-400 px-3 py-1 rounded-lg border border-red-500/30">
+                            ${p.l} <span class="text-xs opacity-70">D</span>
+                        </div>
+                    </div>
                     ${badgeHTML}
                 `;
                 leaderboard.appendChild(item);
             });
+
+            // 2. DESENHAR O HISTÓRICO
+            historyPanel.innerHTML = '';
+            if (appData.history.length === 0) {
+                historyPanel.innerHTML = '<div class="text-center text-purple-300/60 py-4 italic">Nenhuma partida registada ainda.</div>';
+            } else {
+                appData.history.forEach(match => {
+                    const hItem = document.createElement('div');
+                    hItem.className = 'flex items-center justify-between bg-purple-900/30 p-3 rounded-lg border border-purple-500/10 text-sm md:text-base';
+                    hItem.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-purple-300 font-mono text-xs bg-black/40 px-2 py-1 rounded-md">${match.time}</span>
+                            <span>
+                                <strong class="text-green-400">${match.winner}</strong> 
+                                <span class="text-purple-200/70 mx-1">derrotou</span> 
+                                <strong class="text-red-400">${match.loser}</strong>
+                            </span>
+                        </div>
+                        <i data-lucide="swords" class="w-4 h-4 text-purple-500/50"></i>
+                    `;
+                    historyPanel.appendChild(hItem);
+                });
+            }
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
